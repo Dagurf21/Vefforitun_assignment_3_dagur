@@ -90,9 +90,45 @@ app.get(apiPath + version + "/genres/:genreId/books/bookId", (req, res) => {
 // GET http://localhost:3000/api/v1/books/:genreId/
 // Input: None
 // Output and status code: 501 Not Implemented - list of Books
-app.post(apiPath + version + "/genres/books", (req, res) => {
-  // TODO: Implement GET ALL Books
-  res.status(501).json({ message: "This endpoint has not been implemented yet"});
+app.post(apiPath + version + "/books", (req, res) => {
+  
+  // validate the information
+  if (
+    !req.body || // check if there is any information 
+    !req.body.title || // Check if there is a title
+    !req.body.author || // Check if there is an author
+    typeof req.body.title !== "string" || // Check for the type of title 
+    typeof req.body.author !== "string" // Check for the type of author 
+  ) {
+    return res // If any condition is true then return this error message
+              .status(400)
+              .json({message: "Books require both a title and an author"});
+  }
+
+  // Create the new book
+  const newBook = {
+    id: parseInt(nextBookId),
+    title: String(req.body.title),
+    author: String(req.body.author),
+    genreId: parseInt(req.body.genreId, 10),
+  }
+
+  // Check if the book already exists, i.e. another book has the same title, author 
+  // Books can have the same genreId, obviously
+  if (books.some((books) => books.title === newBook.title &&
+                            books.author === newBook.author)) {
+      // if it does, return an error message
+      return res
+                .status(400)
+                .json({message: `A Book with the title ${newBook.title} and has the author ${newBook.author} already exists`})
+    }
+
+  // Push the new book, add to the nextBookId
+  books.push(newBook)
+  nextBookId++;
+
+  res.status(201).json(newBook)
+
 });
 
 
@@ -117,8 +153,9 @@ app.get(apiPath + version + "/genres/:genreId/books/bookId", (req, res) => {
   res.status(501).json({ message: "This endpoint has not been implemented yet"});
 });
 
-
 /*  --END--  All Book endpoints  --END--  */ 
+
+
 
 /*  --START--  All Genres endpoints  --START--  */ 
 
@@ -161,7 +198,7 @@ app.post(apiPath + version + "/genres", (req, res) => {
               .json({message: `A genre with the name ${newGenre.name} already exists`});
   }
 
-  // Push the new genre, add to the genreIdCounter
+  // Push the new genre, add to the nextGenreId
   genres.push(newGenre)
   nextGenreId++;
 
