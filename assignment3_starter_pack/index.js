@@ -68,7 +68,6 @@ const books = [
 // GET ALL BOOKS
 // Read all books
 // GET http://localhost:3000/api/v1/books
-// Input: None
 // Output and status code: 501 Not Implemented - list of Books
 app.get(apiPath + version + "/books", (req, res) => {
   res.status(200).json(books);
