@@ -65,34 +65,59 @@ const books = [
 
 /*  --START--  All Book endpoints  --START--  */ 
 
-// GET ALL BOOKS
+
+// GET ALL BOOKS // TODO : Make it work with a filter
 // Read all books
 // GET http://localhost:3000/api/v1/books
 // Output and status code: 501 Not Implemented - list of Books
 app.get(apiPath + version + "/books", (req, res) => {
-  res.status(200).json(books);
+    res.status(200).json(books);
+
 });
 
 
-// GET A SINGLE BOOK
+// GET A SINGLE BOOK // TODO : THIS WORKS !!! DO NOT CHANGE !!!
 // Read a single book
 // GET http://localhost:3000/api/v1/books/:genreId/
 // Input: None
 // Output and status code: 501 Not Implemented - list of Books
-app.get(apiPath + version + "/genres/:genreId/books/bookId", (req, res) => {
-  // TODO: Implement GET ALL Books
-  res.status(501).json({ message: "This endpoint has not been implemented yet"});
-});
-
-
-// CREATE A NEW BOOK
-// Read a single book
-// GET http://localhost:3000/api/v1/books/:genreId/
-// Input: None
-// Output and status code: 501 Not Implemented - list of Books
-app.post(apiPath + version + "/books", (req, res) => {
+app.get(apiPath + version + "/genres/:genreId/books/:bookId", (req, res) => {
+    try {
+      // Extract both genreId and bookId from the URl
+      const {genreId, bookId} = req.params;
   
-  // validate the information
+      // Checks if the genre exists, with checking the url genreID with every id in the arrays
+      const genreExists = genres.find(genre => genre.id === parseInt(genreId));
+  
+      if (!genreExists) {
+        // Sends a 404 Not Found status if no genre is found
+        return res.status(404).json({ message: "Genre not found." });
+      }
+  
+      // Checks if the book in the URL exists, with checking the url bookID with every id in the arrays and then secondly with an AND (&&) checks if the book.genreID matches the genreID in genres
+      const book = books.find(book => book.id === parseInt(bookId) && book.genreId === parseInt(genreId));
+  
+      if (book) {
+        // Sends a 200 OK status with the individual book data
+        res.status(200).json(book);
+      } else {
+        // Sends a 404 Not Found status if no book is found
+        res.status(404).json({ message: "Book not found" });
+      }
+    } catch (error) {
+      // Sends a 500 Error status if there is no book in the array
+      res.status(500).json({ message: "Error while fetching the book." });
+    }
+});
+
+
+// CREATE A NEW BOOK // TODO: THIS WORKS !!! DO NOT CHANGE !!!
+// Read a single book
+// GET http://localhost:3000/api/v1/books/:genreId/
+// Input: None
+// Output and status code: 201 created
+app.post(apiPath + version + "/books", (req, res) => {
+  // validate the information of the request
   if (
     !req.body || // check if there is any information 
     !req.body.title || // Check if there is a title
@@ -115,51 +140,71 @@ app.post(apiPath + version + "/books", (req, res) => {
 
   // Check if the book already exists, i.e. another book has the same title, author 
   // Books can have the same genreId, obviously
-  if (books.some((books) => books.title === newBook.title &&
+/*   if (books.some((books) => books.title === newBook.title &&
                             books.author === newBook.author)) {
       // if it does, return an error message
       return res
                 .status(400)
                 .json({message: `A Book with the title ${newBook.title} and has the author ${newBook.author} already exists`})
-    }
+    } */
 
   // Push the new book, add to the nextBookId
   books.push(newBook)
   nextBookId++;
 
   res.status(201).json(newBook)
-
 });
 
 
-// PARTIALLY UPDATE A BOOK
+// PARTIALLY UPDATE A BOOK // TODO: Finish...
 // Read a single book
 // GET http://localhost:3000/api/v1/books/:genreId/
 // Input: None
 // Output and status code: 501 Not Implemented - list of Books
-app.get(apiPath + version + "/genres/:genreId/books/bookId", (req, res) => {
+app.patch(apiPath + version + "/genres/:genreId/books/bookId", (req, res) => {
   // TODO: Implement GET ALL Books
   res.status(501).json({ message: "This endpoint has not been implemented yet"});
 });
 
 
-// DELETE A BOOK 
+// DELETE A BOOK // TODO: THIS WORKS !!! DO NOT CHANGE !!!
 // Read a single book
 // GET http://localhost:3000/api/v1/books/:genreId/
 // Input: None
 // Output and status code: 501 Not Implemented - list of Books
-app.get(apiPath + version + "/genres/:genreId/books/bookId", (req, res) => {
-  // TODO: Implement GET ALL Books
-  res.status(501).json({ message: "This endpoint has not been implemented yet"});
-});
+app.delete(apiPath + version + "/books/:bookId", (req, res) => {
+    const bookId = req.params.bookId;
+    
+    // Check if the bookId has the correct format
+    const validIdFormat = /^\d+$/; // Using regular expression for numeric ID's
 
+    if (!bookId || !validIdFormat.test(bookId)) {
+        return res.status(400).json({ message: `Invalid Input. Please only use numbers`})
+    }
+
+    // Check if the bookId variable is empty
+    if (!bookId) {
+        return res.status(405).json({ message: 'Invalid Input. bookId is required' });
+    };
+
+    const deletedBookId = books.findIndex(
+        (book) => parseInt(book.id) === parseInt(req.params.bookId)
+    );
+
+    if (deletedBookId === -1) {
+        return res.status(404).json({ message: `Book with id ${req.params.bookId} does not exists`});
+    };
+
+    // Expected return
+    const deletedBook = books[deletedBookId];
+    books.splice(deletedBookId, deletedBookId + 1);
+    return res.status(200).json(deletedBook)
+
+});
 /*  --END--  All Book endpoints  --END--  */ 
 
-
-
-/*  --START--  All Genres endpoints  --START--  */ 
-
-// GET ALL GENRES
+/*  --START--  All Genres endpoints  --START--  */
+// GET ALL GENRES // TODO: THIS WORKS !!! DO NOT CHANGE !!!
 // Read all genres
 // GET http://localhost:3000/api/v1/genres
 // Output and status code: 200 OK - list of genres 
@@ -168,7 +213,7 @@ app.get(apiPath + version + "/genres", (req, res) => {
 });
 
 
-// CREATE A NEW GENRE
+// CREATE A NEW GENRE // TODO: THIS WORKS !!! DO NOT CHANGE !!!
 // Create a new genre
 // POST http://localhost:3000/api/v1/genres
 // Output and status code: 201 - Create
@@ -186,7 +231,7 @@ app.post(apiPath + version + "/genres", (req, res) => {
 
   // create the new genre
   const newGenre = {
-    id: String(nextGenreId),
+    id: parseInt(nextGenreId),
     name: String(req.body.name)
   };
 
@@ -205,24 +250,51 @@ app.post(apiPath + version + "/genres", (req, res) => {
   res.status(201).json(newGenre);
 });
 
-/* 
-
-
-    WHAT THE ************ IS THIS ???
-
-
-
-*/
-
-// DELETE A GENRE
+// DELETE A GENRE // TODO: THIS WORKS !!! DO NOT CHANGE !!!
 // Delete a genre
 // GET http://localhost:3000/api/v1/genres/:genreId
 // Input: None
 // Output and status code: 501 Not Implemented - list of genres 
-app.get(apiPath + version + "/genres", (req, res) => {
-  // TODO: Implement GET ALL GENRES
-  res.status(501).json({ message: "This endpoint has not been implemented yet"});
+app.delete(apiPath + version + "/genres/:genreId", (req, res) => {
+    const genreId = req.params.genreId;
+
+    // Check if genreId is empty
+    if (!genreId) {
+        return res.status(405).json({ message: 'Invalid Input. genreId is required.' });
+    }
+    // Doont think that we need this ^^^^^^
+    
+    const deletedGenreId = genres.findIndex(
+        (genre) => parseInt(genre.id) === parseInt(req.params.genreId)
+    );
+
+    if (deletedGenreId === -1) {
+        return res.status(404).json({message: `Genre with id ${req.params.genreId} does not exists`});
+    }
+    
+    const genreHasBooks = books.some((book) => parseInt(book.genreId) === parseInt(req.params.genreId)); 
+
+    if (genreHasBooks) {
+        return res.status(400).json({message : "Cannot delete genre, as it is used by at least one book"})
+    }
+
+    // Expected return
+    const deletedGenre = genres[deletedGenreId];
+    genres.splice(deletedGenreId, deletedGenreId + 1);
+    return res.status(200).json(deletedGenre)
 });
+
+
+/* Handle bad requests */
+// Handle genre deletion with no genreId
+app.delete(apiPath + version + "/genres/", (req, res) => {
+    return res.status(405).json({ message : "Method not allowed !" })
+})
+
+// Handle book deletion with no bookId
+app.delete(apiPath + version + "/books/", (req, res) => {
+    return res.status(405).json({ message : "Method not allowed !" })
+})
 
 
 /*  --END--  All Genres endpoints  --END--  */ 
