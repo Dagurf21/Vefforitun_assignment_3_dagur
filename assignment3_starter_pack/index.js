@@ -66,21 +66,46 @@ const books = [
 /*  --START--  All Book endpoints  --START--  */ 
 
 
-// GET ALL BOOKS // TODO : Make it work with a filter
-// Read all books
+// GET ALL BOOKS // TODO : THIS WORKS !!! DO NOT CHANGE !!!
 // GET http://localhost:3000/api/v1/books
-// Output and status code: 501 Not Implemented - list of Books
+// Output and status code: 200 OK 
 app.get(apiPath + version + "/books", (req, res) => {
-    res.status(200).json(books);
+    // Check the 'filter' query parameter is provided
+    if (!req.query.filter) {
 
+        // Check if the 'filter' is spelled correctly
+        const allowedQueryParameters = ['filter']
+        const queryParameters = Object.keys(req.query)
+        const invalidParametes = queryParameters.filter(b => !allowedQueryParameters.includes(b))
+        
+        if (invalidParametes.length > 0){
+            return res.status(400).json({ message: 'Invalid input. Only "filter" paramieter is allowed'})
+        }
+        
+        // If there is no filter return the unaltered books array
+        return res.status(200).json(books)
+    } else {
+        // If the 'filter' is provided, find the bookId
+        const genre = genres.find(
+            (genre) =>  genre.name.toLowerCase() === req.query.filter.toLowerCase()
+        );
+
+        if (!genre) {
+            return res.status(200).json([])
+        }
+
+        // Filter the books to find all instances of books with the genre.id
+        const filterBooks = books.filter((b) => parseInt(b.genreId) === genre.id);
+        
+        // Return the found books
+        res.status(200).json(filterBooks);
+    }
 });
 
 
 // GET A SINGLE BOOK // TODO : THIS WORKS !!! DO NOT CHANGE !!!
-// Read a single book
 // GET http://localhost:3000/api/v1/books/:genreId/
-// Input: None
-// Output and status code: 501 Not Implemented - list of Books
+// Output and status code: 200 OK - One book
 app.get(apiPath + version + "/genres/:genreId/books/:bookId", (req, res) => {
     try {
       // Extract both genreId and bookId from the URl
@@ -112,66 +137,139 @@ app.get(apiPath + version + "/genres/:genreId/books/:bookId", (req, res) => {
 
 
 // CREATE A NEW BOOK // TODO: THIS WORKS !!! DO NOT CHANGE !!!
-// Read a single book
-// GET http://localhost:3000/api/v1/books/:genreId/
-// Input: None
+// POST http://localhost:3000/api/v1/books/
 // Output and status code: 201 created
 app.post(apiPath + version + "/books", (req, res) => {
-  // validate the information of the request
-  if (
-    !req.body || // check if there is any information 
-    !req.body.title || // Check if there is a title
-    !req.body.author || // Check if there is an author
-    typeof req.body.title !== "string" || // Check for the type of title 
-    typeof req.body.author !== "string" // Check for the type of author 
-  ) {
+    // validate the information of the request
+    if (
+        !req.body || // check if there is any information 
+        !req.body.title || // Check if there is a title
+        !req.body.author || // Check if there is an author
+        typeof req.body.title !== "string" || // Check for the type of title 
+        typeof req.body.author !== "string" // Check for the type of author 
+    )   {
     return res // If any condition is true then return this error message
               .status(400)
               .json({message: "Books require both a title and an author"});
-  }
+    }
 
-  // Create the new book
-  const newBook = {
-    id: parseInt(nextBookId),
-    title: String(req.body.title),
-    author: String(req.body.author),
-    genreId: parseInt(req.body.genreId, 10),
-  }
+    // Check if the genreId exists
+    const genreExists = genres.find(genre => genre.id === parseInt(req.body.genreId));
+    
+    if(!genreExists){
+        return res.status(400).json({ message: "Bad Request: genre not found" });
+    }
 
-  // Check if the book already exists, i.e. another book has the same title, author 
-  // Books can have the same genreId, obviously
-/*   if (books.some((books) => books.title === newBook.title &&
-                            books.author === newBook.author)) {
-      // if it does, return an error message
-      return res
-                .status(400)
-                .json({message: `A Book with the title ${newBook.title} and has the author ${newBook.author} already exists`})
-    } */
+    // Create the new book
+    const newBook = {
+        id: parseInt(nextBookId),
+        title: String(req.body.title),
+        author: String(req.body.author),
+        genreId: parseInt(req.body.genreId, 10),
+    }
 
-  // Push the new book, add to the nextBookId
-  books.push(newBook)
-  nextBookId++;
+    // Push the new book, add to the nextBookId
+    books.push(newBook)
+    nextBookId++;
 
-  res.status(201).json(newBook)
+    res.status(201).json(newBook)
 });
 
 
 // PARTIALLY UPDATE A BOOK // TODO: Finish...
-// Read a single book
-// GET http://localhost:3000/api/v1/books/:genreId/
-// Input: None
-// Output and status code: 501 Not Implemented - list of Books
-app.patch(apiPath + version + "/genres/:genreId/books/bookId", (req, res) => {
-  // TODO: Implement GET ALL Books
-  res.status(501).json({ message: "This endpoint has not been implemented yet"});
+// PATCH http://localhost:3000/api/v1/genres/:genreId/books/bookId
+// Output and status code: 200 OK
+app.patch(apiPath + version + "/genres/:genreId/books/:bookId", (req, res) => {
+    const { bookId, genreId } = req.params;
+    // Get the title, author, and genreId from the request body
+    const { title, author, newGenreId } = req.body;
+  
+    const genreIDInt = parseInt(genreId, 10); // 10 gives us the decimal number of the bookIDInt
+    const bookIDInt = parseInt(bookId, 10); // 10 gives us the decimal number of the bookIDInt
+  
+    // checks if given bookId, genreId and the newGenreId is a number
+    if (isNaN(genreIDInt )|| isNaN(bookIDInt)) {
+      return res.status(400).json({ message: "Given Id has to be an integerr." });
+    }
+  
+    // checks if the genreId valid and exists
+    const genre = genres.find((genre) => genre.id === parseInt(genreIDInt));
+    if (!genre) {
+      return res.status(404).json({ message: "The genreId given is not valid for a existing genre ." });
+    }
+  
+    // checks if bookId is valid and exists
+    const book = books.find((book) => book.id === parseInt(bookIDInt));
+    if (!book) {
+      return res.status(404).json({ message: "Book not found." });
+    }
+  
+    // checks if the book is accociated with the genre
+    if (book.genreId !== parseInt(genreIDInt)) {
+      return res.status(404).json({ message: "Book not found in genre." });
+    }
+  
+    // Updates the title
+    if (title) {
+      book.title = title;
+    }
+  
+    // updates the author
+    if (author) {
+      book.author = author;
+    }
+  
+    // updates the genreId
+    if (newGenreId) {
+      book.genreId = newGenreId;
+    }
+  
+    // returns the updated book and sends a 200 ok status
+    res.status(200).json(book);
 });
+
+/* app.patch(apiPath + version + "/genres/:genreId/books/:bookId", (req, res) => {
+    const { genreId, bookId } = req.params;
+    const { newTitle, newAuthor } = req.body;
+
+    // Find the book corresponding to the bookId
+    const book = books.find(book => book.id === parseInt(bookId));
+    if (!book) {
+        return res.status(404).json({ message: "Book not found." });
+    }
+
+    // Check if there is a genreId. i.e. genreId != null
+    if (genreId !== undefined) {
+        book.genreId = genreId;
+    } // Else do nothing
+
+    // Check if there is a new title
+    if (newTitle !== undefined) {
+        book.title = newTitle;
+    } // Else do nothing
+
+    // Check if there is a new author
+    if (newAuthor !== undefined) {
+        book.author = newAuthor;
+    } // Else do nothing
+
+    console.log(req.params);
+    console.log(req.body);
+    console.log(`BookID: ${bookId} | Title: ${newTitle} | Author: ${newAuthor} | GenreId: ${genreId} |`);
+    console.log(book);
+
+    // Check if the book's genre matches the genreId provided in the request
+    // if (book.genreId !== parseInt(genreId)) {
+    //   return res.status(404).json({ message: "Mismatch between the book's genre and the provided genreId." });
+    // }
+    books.push(book)
+    res.status(200).json(book);
+}); */
 
 
 // DELETE A BOOK // TODO: THIS WORKS !!! DO NOT CHANGE !!!
-// Read a single book
-// GET http://localhost:3000/api/v1/books/:genreId/
-// Input: None
-// Output and status code: 501 Not Implemented - list of Books
+// DELETE http://localhost:3000/api/v1/books/:bookId
+// Output and status code: 200 OK
 app.delete(apiPath + version + "/books/:bookId", (req, res) => {
     const bookId = req.params.bookId;
     
@@ -201,11 +299,14 @@ app.delete(apiPath + version + "/books/:bookId", (req, res) => {
     return res.status(200).json(deletedBook)
 
 });
+
+
 /*  --END--  All Book endpoints  --END--  */ 
 
 /*  --START--  All Genres endpoints  --START--  */
+
+
 // GET ALL GENRES // TODO: THIS WORKS !!! DO NOT CHANGE !!!
-// Read all genres
 // GET http://localhost:3000/api/v1/genres
 // Output and status code: 200 OK - list of genres 
 app.get(apiPath + version + "/genres", (req, res) => {
@@ -214,7 +315,6 @@ app.get(apiPath + version + "/genres", (req, res) => {
 
 
 // CREATE A NEW GENRE // TODO: THIS WORKS !!! DO NOT CHANGE !!!
-// Create a new genre
 // POST http://localhost:3000/api/v1/genres
 // Output and status code: 201 - Create
 app.post(apiPath + version + "/genres", (req, res) => {
@@ -224,9 +324,8 @@ app.post(apiPath + version + "/genres", (req, res) => {
     !req.body.name || // Checks if the name exists in the body
     typeof req.body.name !== "string"
   ) {
-    return res // If any condition is true then return this error message
-              .status(400)
-              .json({message: "Genres require a name"});
+      // If any condition is true then return this error message
+      return res .status(400).json({message: "Genres require a name"});
   }
 
   // create the new genre
@@ -236,11 +335,9 @@ app.post(apiPath + version + "/genres", (req, res) => {
   };
 
   // check if the genre already exists
-  if (genres.some((genre) => genre.name === newGenre.name)) {
+  if (genres.some((genre) => genre.name.toLowerCase() === newGenre.name.toLowerCase())) {
     // if it does, return an error message
-    return res
-              .status(400)
-              .json({message: `A genre with the name ${newGenre.name} already exists`});
+    return res.status(400).json({message: `A genre with the name ${newGenre.name} already exists`});
   }
 
   // Push the new genre, add to the nextGenreId
@@ -250,11 +347,10 @@ app.post(apiPath + version + "/genres", (req, res) => {
   res.status(201).json(newGenre);
 });
 
+
 // DELETE A GENRE // TODO: THIS WORKS !!! DO NOT CHANGE !!!
-// Delete a genre
-// GET http://localhost:3000/api/v1/genres/:genreId
-// Input: None
-// Output and status code: 501 Not Implemented - list of genres 
+// DELETE http://localhost:3000/api/v1/genres/:genreId
+// Output and status code: 200 OK
 app.delete(apiPath + version + "/genres/:genreId", (req, res) => {
     const genreId = req.params.genreId;
 
